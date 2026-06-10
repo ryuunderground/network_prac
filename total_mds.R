@@ -39,7 +39,7 @@ for (pkg in bioc_packages) {
 }
 
 #루트 디렉토리 설정
-root <- "~/Documents/network_prac"
+root <- "~/Documents/github/network_prac"
 setwd(root)
 
 ####################################
@@ -238,91 +238,101 @@ PC3 <- paste0("PC3 (", pc3_percent, "%)")
 #######################
 #### MDS Plotting #####
 #######################
-library(ggplot2)
-library(gridExtra)
 
-# 1. Treat 벡터: factor로 그룹 지정 (A/B/C 등 자동 인식)
+library(ggplot2)
+library(patchwork)
+
+# 1. 그룹 정보 및 MDS 좌표 정리
 Treat <- dge$samples$group
+
 plot_data <- data.frame(
-  Group = Treat, 
-  X = MDS_data$x, 
-  Y = MDS_data$y
+  Group = Treat,
+  X = MDS_data$x,
+  Y = MDS_data$y,
+  Sample = sample_names
 )
 
-endoColor = "#ff8c00"
-ovaryColor = "#6499E9"
-ovidColor = "#228b22"
+# 2. 그룹별 색상 지정
+manual_colors <- c(
+  "endo" = "#ff8c00",
+  "ovary" = "#6499E9",
+  "ovid" = "#228b22"
+)
 
-# 2. 축 레이블: PC1, PC2
-x_lab <- PC1  # 예: "PC1 (42%)"
+# 3. 축 범위 및 축 라벨
+x_lim <- c(-2.5, 2.5)
+y_lim <- c(-2.5, 2.5)
+
+x_lab <- PC1
 y_lab <- PC2
 
-# 3. 테마 함수
-theme0 <- function(...) theme(
-  legend.position = "none",
-  panel.background = element_blank(),
-  panel.grid.major = element_blank(),
-  panel.grid.minor = element_blank(),
-  panel.spacing = unit(0, "null"),
-  axis.ticks = element_blank(),
-  axis.text.x = element_text(margin = margin()),
-  axis.text.y = element_text(margin = margin()),
-  axis.title.x = element_blank(),
-  axis.title.y = element_blank(),
-  axis.ticks.length = unit(0, "null"),
-  panel.border = element_rect(color = NA),
-  ...
-)
-
-
-# 4. MDS Scatter Plot
-# plot_data에 sample_names 추가
-
-plot_data$Sample <- sample_names
-
+# 4. 메인 MDS scatter plot
 p1 <- ggplot(plot_data, aes(x = X, y = Y, color = Group)) +
   geom_point(size = 3) +
-  # 점마다 일자 여부
-  geom_text(aes(label = Sample), vjust = -0.8, size = 3.5, show.legend = FALSE) +
-  xlab(x_lab) + ylab(y_lab) +
-  scale_x_continuous(expand = c(0.02, 0)) +
-  scale_y_continuous(expand = c(0.02, 0)) +
-  scale_color_manual(
-    values = c(
-      "endo" = endoColor,
-      "ovary" = ovaryColor,
-      "ovid" = ovidColor
-    )
+  # 점마다 sample 이름 표시
+  geom_text(
+    aes(label = Sample),
+    vjust = -0.8,
+    size = 3.5,
+    show.legend = FALSE
   ) +
+  scale_color_manual(values = manual_colors) +
+  scale_x_continuous(limits = x_lim, expand = c(0, 0)) +
+  scale_y_continuous(limits = y_lim, expand = c(0, 0)) +
+  xlab(x_lab) +
+  ylab(y_lab) +
   theme_bw() +
-  theme(legend.position = "left") +
-  theme(panel.border = element_rect(colour = "gray87")) +
-  coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(-2.5, 2.5))
+  theme(
+    legend.position = "left",
+    panel.border = element_rect(colour = "gray87"),
+    plot.margin = margin(0, 0, 0, 0)
+  )
 
-# 5. X축 밀도
+# 5. X축 marginal density
 p2 <- ggplot(plot_data, aes(x = X, fill = Group, color = Group)) +
   geom_density(alpha = 0.7) +
-  scale_x_continuous(breaks = NULL, expand = c(0.02, 0)) +
-  scale_y_continuous(breaks = NULL, expand = c(0.02, 0)) +
-  theme_bw() + theme0(plot.margin = unit(c(1, -0.5, -0.5, 8), "lines"))
+  scale_fill_manual(values = manual_colors) +
+  scale_color_manual(values = manual_colors) +
+  scale_x_continuous(limits = x_lim, expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0,10), expand = c(0, 0)) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(0, 0, 0, 0)
+  )
 
-# 6. Y축 밀도
+# 6. Y축 marginal density
 p3 <- ggplot(plot_data, aes(x = Y, fill = Group, color = Group)) +
   geom_density(alpha = 0.7) +
+  scale_fill_manual(values = manual_colors) +
+  scale_color_manual(values = manual_colors) +
+  scale_x_continuous(limits = y_lim, expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0,40), expand = c(0, 0)) +
   coord_flip() +
-  scale_x_continuous(breaks = NULL, expand = c(0.02, 0)) +
-  scale_y_continuous(breaks = NULL, expand = c(0.02, 0)) +
-  theme_bw() + theme0(plot.margin = unit(c(-0.55, 3, 1.3, -0.2), "lines"))
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(0, 0, 0, 0)
+  )
 
-# 7. 플롯 화면에 표시
-g <- grid.arrange(
-  arrangeGrob(p2, ncol = 2, widths = c(3, 1)),
-  arrangeGrob(p1, p3, ncol = 2, widths = c(3, 1)),
-  heights = c(1, 3))
+# 7. 빈 패널
+empty <- ggplot() + theme_void()
+
+# 8. 패널 조합
+# widths 두 번째 값이 p3 폭
+# heights 첫 번째 값이 p2 높이
+g <- (p2 + empty) /
+  (p1 + p3) +
+  plot_layout(
+    widths = c(5, 0.9),
+    heights = c(0.9, 5)
+  )
+
+# 9. 플롯 확인
 plot(g)
 
-
-# 8. PDF 저장
+# 10. PDF 저장
 # pdf_path <- file.path(root, "DEG_Results/three_groups_MDS_no_text.pdf")
 pdf_path <- file.path(root, "DEG_Results/three_groups_MDS.pdf")
-ggsave(filename = pdf_path, plot = g, width = 8, height = 8)
+ggsave(filename = pdf_path, plot = g, width = 16, height = 8)
+
