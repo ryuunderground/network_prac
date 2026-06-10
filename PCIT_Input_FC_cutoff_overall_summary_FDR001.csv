@@ -1,0 +1,6 @@
+Cutoff,logFC_cutoff,FDR_cutoff,Total_unique_genes,Passed_unique_genes,Removed_unique_genes,Removed_percent
+FC2,1,0.01,21121,3336,17785,84.21
+FC4,2,0.01,21121,3336,17785,84.21
+FC8,3,0.01,21121,3336,17785,84.21
+FC16,4,0.01,21121,2582,18539,87.78
+FC32,5,0.01,21121,1823,19298,91.37
