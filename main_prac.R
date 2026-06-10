@@ -152,93 +152,6 @@ write.csv(
 )
 
 print(fc_overall_summary)
-
-########################################################
-#### FC32 + FDR < 0.01 후보 중 Top 700 PCIT input 생성 ####
-########################################################
-
-fc_name <- "FC32"
-logfc_cutoff <- 5
-top_n <- 700
-
-candidate_table <- do.call(rbind, lapply(file_list, function(sample_name) {
-  
-  df <- data_list[[sample_name]]
-  
-  filtered <- df[
-    abs(df$logFC) >= logfc_cutoff &
-      df$FDR < fdr_cutoff,
-  ]
-  
-  if (nrow(filtered) == 0) return(NULL)
-  
-  data.frame(
-    genes = filtered$genes,
-    sample = sample_name,
-    logFC = filtered$logFC,
-    abs_logFC = abs(filtered$logFC),
-    FDR = filtered$FDR,
-    stringsAsFactors = FALSE
-  )
-}))
-
-gene_rank <- data.frame(
-  genes = unique(candidate_table$genes),
-  stringsAsFactors = FALSE
-)
-
-gene_rank$Min_FDR <- sapply(gene_rank$genes, function(g) {
-  min(candidate_table$FDR[candidate_table$genes == g], na.rm = TRUE)
-})
-
-gene_rank$Max_abs_logFC <- sapply(gene_rank$genes, function(g) {
-  max(candidate_table$abs_logFC[candidate_table$genes == g], na.rm = TRUE)
-})
-
-gene_rank <- gene_rank[order(gene_rank$Min_FDR, -gene_rank$Max_abs_logFC), ]
-
-top_genes <- head(gene_rank$genes, top_n)
-
-pcit_top700 <- data.frame(genes = top_genes)
-
-for (i in seq_along(file_list)) {
-  df <- data_list[[file_list[i]]][, c("genes", "logFC")]
-  colnames(df)[2] <- file_list[i]
-  
-  pcit_top700 <- merge(
-    pcit_top700,
-    df,
-    by = "genes",
-    all.x = TRUE
-  )
-}
-
-pcit_top700[is.na(pcit_top700)] <- 0
-
-write.table(
-  pcit_top700,
-  file.path(
-    "PCIT_Input",
-    paste0("PCIT_input_FC32_", fdr_label, "_Top", top_n, ".txt")
-  ),
-  sep = "\t",
-  quote = FALSE,
-  row.names = FALSE
-)
-
-write.csv(
-  gene_rank,
-  file.path(
-    "DEG_Filter_Summary",
-    paste0("Gene_rank_FC32_", fdr_label, "_Top", top_n, ".csv")
-  ),
-  row.names = FALSE,
-  quote = FALSE
-)
-
-cat("FC32 candidate genes:", length(unique(candidate_table$genes)), "\n")
-cat("Selected Top genes:", nrow(pcit_top700), "\n")
-
 ###############################
 ##### Attribute file 생성 #####
 ###############################
@@ -324,13 +237,3 @@ cat("\nDone.\n")
 cat("Generated PCIT input files in: PCIT_Input/\n")
 cat("Generated DEG summary files in: DEG_Filter_Summary/\n")
 cat("Generated attribute file:", paste0("Attribute_FC_FDR_summary_", fdr_label, ".txt"), "\n")
-
-attribute_top700 <- attribute[attribute$genes %in% top_genes, ]
-
-write.table(
-  attribute_top700,
-  paste0("Attribute_FC32_", fdr_label, "_Top", top_n, ".txt"),
-  sep = "\t",
-  quote = FALSE,
-  row.names = FALSE
-)
